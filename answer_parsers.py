@@ -62,6 +62,7 @@ def verify_triangles(input: str) -> bool:
 
     # reorder A cyclically so that { A[0], A[1], A[3] } = { B[0], B[1], B[2] } and { A[0], A[2], A[4] } = { C[0], C[1], C[2] } as sets
     try:
+        # TODO: Its also fine if exchanging B and C passes this test! --> adapt the reorder code to implement this.
         reorder_points(A2_vec, ([0, 1, 3], B2_vec), ([0, 2, 4], C2_vec))
     except Exception:
         return False
