@@ -4,7 +4,7 @@ from sympy import Point, Polygon
 from sympy.geometry.polygon import Triangle
 from sympy.utilities.iterables import rotate_left
 
-def verify(input: str) -> bool:
+def verify_triangles(input: str) -> bool:
     lines = input.strip().split('\n')
     if len(lines) != 2:
         return False
@@ -163,5 +163,5 @@ if __name__ == "__main__":
     2; (0,0), (6,0), (7,5), (5,7), (6,0); (0,0), (6,0), (5,7); (0,0), (7,5), (6,0);  
     """
 
-    verified = verify(input_text)
+    verified = verify_triangles(input_text)
     print(verified)
