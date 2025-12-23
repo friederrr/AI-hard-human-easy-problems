@@ -1,5 +1,15 @@
 # AI-hard-human-easy-problems
 
+## Installation 
+We use Python, so please install that to your system.
+
+We use Astral's `uv` package manager for this project.
+Please proceed with the installation [as described in their documentation](https://docs.astral.sh/uv/getting-started/installation/#__tabbed_1_2).
+
+Once you have installed uv, simply use `uv sync` to install all required dependencies.
+To run **any Python script**, make sure to use **uv run <your_script.py>** instead of just using **python**.
+(Alternatively, you can use **uv sync** and then **source .venv/bin/activate** if you prefer using **python** directly to activate the managed virtual environment).
+
 ## Answer Parsers
 
 Our answer parsers are found in `answer_parsers.py`, with the tests being available in `test_answer_parsers.py`.
