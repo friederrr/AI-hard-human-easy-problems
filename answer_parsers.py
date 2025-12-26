@@ -31,6 +31,27 @@ def extract_boxed(text: str) -> str:
     
     return text[start_pos:pos-1]
 
+def extract_last_enclosed_answer(text: str) -> str:
+    """
+    Extract the last text enclosed in <answer>...</answer> tags.
+    Ignores incomplete or unmatched opening <answer> tags.
+    """
+    # Find all closing </answer> tags
+    closing_tags = list(re.finditer(r'</answer>', text))
+    if not closing_tags:
+        return ""
+    
+    # find the last opening tag before the last closing tag
+    last_closing = closing_tags[-1]
+    closing_pos = last_closing.start()
+    opening_tags = list(re.finditer(r'<answer>', text[:closing_pos]))
+    if not opening_tags:
+        return ""
+    
+    # Use the last opening tag before the closing tag
+    last_opening = opening_tags[-1]
+    return text[last_opening.end():last_closing.start()]
+
 def verify_triangles(input: str) -> tuple[bool, str]:
     """ Verifies an answer for the triangles problem.
     Returns:
