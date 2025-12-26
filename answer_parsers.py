@@ -37,7 +37,8 @@ def verify_triangles(input: str) -> bool:
 
     # reorder A cyclically so that { A[0], A[1], A[2] } = { B[0], B[1], B[2] } as sets
     try:
-        reorder_points(A1_vec, ([0, 1, 2], B1_vec))
+        if not reorder_points(A1_vec, ([0, 1, 2], B1_vec)):
+            return False
     except Exception:
         return False
 
@@ -63,7 +64,8 @@ def verify_triangles(input: str) -> bool:
     # reorder A cyclically so that { A[0], A[1], A[3] } = { B[0], B[1], B[2] } and { A[0], A[2], A[4] } = { C[0], C[1], C[2] } as sets
     try:
         # TODO: Its also fine if exchanging B and C passes this test! --> adapt the reorder code to implement this.
-        reorder_points(A2_vec, ([0, 1, 3], B2_vec), ([0, 2, 4], C2_vec))
+        if not reorder_points(A2_vec, ([0, 1, 3], B2_vec), ([0, 2, 4], C2_vec)) and not reorder_points(A2_vec, ([0, 1, 3], C2_vec), ([0, 2, 4], B2_vec)):
+            return False
     except Exception:
         return False
 
@@ -106,7 +108,7 @@ def det(v1: Point, v2: Point) -> float:
 def sign(x: float) -> int:
     return 1 if x > 0 else -1 if x < 0 else 0
 
-def reorder_points(A_vec: list[Point], *constraints: tuple[list[int], list[Point]]) -> None:
+def reorder_points(A_vec: list[Point], *constraints: tuple[list[int], list[Point]]) -> bool:
     """
     Reorder A_vec cyclically to satisfy one or more constraints.
     
@@ -138,11 +140,11 @@ def reorder_points(A_vec: list[Point], *constraints: tuple[list[int], list[Point
         
         if all_match:
             A_vec[:] = rotated
-            return
+            return True
     
-    raise ValueError("Could not reorder points to satisfy constraints")
+    return False
 
-def reorder_points_dual(A_vec: list[Point], B_vec: list[Point], C_vec: list[Point]) -> None:
+def reorder_points_dual(A_vec: list[Point], B_vec: list[Point], C_vec: list[Point]) -> bool:
     """
     Reorder A cyclically so that:
     - {A[0], A[1], A[3]} = {B[0], B[1], B[2]} as sets
@@ -153,7 +155,7 @@ def reorder_points_dual(A_vec: list[Point], B_vec: list[Point], C_vec: list[Poin
     if len(A_vec) != 5:
         raise ValueError("A must have 5 points")
     
-    reorder_points(A_vec, ([0, 1, 3], B_vec), ([0, 2, 4], C_vec))
+    return reorder_points(A_vec, ([0, 1, 3], B_vec), ([0, 2, 4], C_vec))
 
 def compare_points(vec1: list[Point], vec2: list[Point]) -> bool:
     """Compare two lists of points as sets. Points are compared by their coordinates."""
