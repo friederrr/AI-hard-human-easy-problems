@@ -10,10 +10,7 @@ app = typer.Typer()
 def triangles(path: Path):
     typer.echo(f"Analyzing triangles at {path}")
     df = pl.read_csv(path)
-
-    texts = df["outer_gen_text"].to_list()
-    answers = [extract_last_enclosed_answer(text) for text in texts]
-
+    
     df = (
         df.with_columns(
             answer=pl.col("outer_gen_text").map_elements(extract_last_enclosed_answer, return_dtype=pl.Utf8),
