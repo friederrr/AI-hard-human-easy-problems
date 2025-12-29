@@ -79,14 +79,11 @@ def verify_triangles(input: str) -> tuple[bool, str]:
         print(e)
         return False, "Line 1 can't be converted to points"
 
-    a1_poly = Polygon(*A1_vec)
-    b1_poly = Polygon(*B1_vec)
-    # Polygon constructor may return Triangle, Segment, or Point for <= 3 points
-    # Only Polygon and Triangle have is_convex() method
-    if not all(isinstance(poly, (Polygon, Triangle)) for poly in [a1_poly, b1_poly]):
-        return False, "Line 1 doesn't contain valid polygons or triangles"
-    if not all(poly.is_convex() for poly in [a1_poly, b1_poly]): # type: ignore
-        return False, "Line 1 doesn't contain convex polygons"
+    try:
+        if not all(is_convex(vec) for vec in [A1_vec, B1_vec]):
+            return False, "Line 1 contains non-convex polygons"
+    except ValueError as e:
+        return False, f"Line 1: {str(e)}"
 
     # reorder A cyclically so that { A[0], A[1], A[2] } = { B[0], B[1], B[2] } as sets
     try:
@@ -111,12 +108,15 @@ def verify_triangles(input: str) -> tuple[bool, str]:
         return False, "Line 2 can't be converted to points"
 
     # # Check that all polygons are valid (not Segments or Points) and convex
-    if not all(poly.is_convex() for vec in [A2_vec, B2_vec, C2_vec] if isinstance(poly:=Polygon(*vec), (Polygon, Triangle))):
-        return False, "Line 2 doesn't contain valid polygons or triangles"
+    try:
+        if not all(is_convex(vec) for vec in [A2_vec, B2_vec, C2_vec]):
+            return False, "Line 2 contains non-convex polygons"
+    except ValueError as e:
+        return False, f"Line 2: {str(e)}"
 
     # reorder A cyclically so that { A[0], A[1], A[3] } = { B[0], B[1], B[2] } and { A[0], A[2], A[4] } = { C[0], C[1], C[2] } as sets
     try:
-        # TODO: Its also fine if exchanging B and C passes this test! --> adapt the reorder code to implement this.
+        # Try both possible orderings of B and C to see if one works
         if not reorder_points(A2_vec, ([0, 1, 3], B2_vec), ([0, 2, 4], C2_vec)) and not reorder_points(A2_vec, ([0, 1, 3], C2_vec), ([0, 2, 4], B2_vec)):
             return False, "Line 2 can't be reordered to satisfy the constraint"
     except Exception:
@@ -213,6 +213,57 @@ def reorder_points_dual(A_vec: list[Point], B_vec: list[Point], C_vec: list[Poin
 def compare_points(vec1: list[Point], vec2: list[Point]) -> bool:
     """Compare two lists of points as sets. Points are compared by their coordinates."""
     return set(vec1) == set(vec2)
+
+def is_convex(p: list[Point]) -> bool:
+    """returns True if the polygon is convex, False otherwise"""
+    return len(concavities(p)) == 0
+
+def concavities(p: list[Point]) -> list[int]:
+    """returns the list of indices of concave vertices of a polygon (empty for a convex polygon), raises errors if not polygon"""
+    if len(p) < 3:
+        raise ValueError(f"Less than 3 vertices in polygon {p}")
+    
+    # check repeated vertices, degenerate vertices, calculate area, and detect concavities
+    ar = 0.0
+    conc = []
+    n = len(p)
+    for i in range(n):
+        next_point = p[(i + 1) % n]
+        prev_point = p[(i - 1) % n]
+        current_point = p[i]
+        # Calculate signed area
+        ar += det(current_point, next_point)
+
+        # Check for repeated vertex
+        if p[i] == next_point:
+            raise ValueError(f"Repeated vertex {i} in polygon {p}")
+
+        # Check for degenerate vertex
+        if det(current_point - next_point, current_point - prev_point) == 0:
+            raise ValueError(f"Degenerate vertex {i} in polygon {p}")
+
+        # the first-to-last edge intersects a non-consecutive edge?
+        if (i > 1 and i < n - 2) and segments_intersect(current_point, next_point, p[0], p[n - 1]):
+            raise ValueError(f"Intersecting edges {i} and {n - 1} in polygon {p}")
+
+        # two other non-consecutive edges intersect?
+        if i >= n - 3:
+            continue
+        for j in range(i + 2, n - 1):
+            if segments_intersect(current_point, next_point, p[j], p[j + 1]):
+                raise ValueError(f"Intersecting edges {i} and {j} in polygon {p}")
+    
+    # Now check concavities using the calculated area
+    ar_sign = sign(ar)
+    conc = [
+        i for i in range(n) if sign(det(p[(i - 1) % n] - p[i], p[(i + 1) % n] - p[i])) == ar_sign
+    ]
+    return conc
+
+def segments_intersect(A: Point, B: Point, C: Point, D: Point) -> bool:
+    """check that AB intersects CD (possibly by the end points)"""
+    return (det(A - C, A - D) * det(B - C, B - D) <= 0) and (det(C - A, C - B) * det(D - A, D - B) <= 0)
+
 
 if __name__ == "__main__":
     input_text = """1; (0,0), (6,0), (5,2), (2,5), (0,6); (0,0), (6,0), (0,6);
