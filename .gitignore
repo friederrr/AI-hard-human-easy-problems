@@ -157,6 +157,8 @@ Thumbs.db
 # Project specific
 *.lock
 
+# Data
+data/
 
 
 

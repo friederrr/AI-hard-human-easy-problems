@@ -8,8 +8,9 @@ app = typer.Typer()
 
 @app.command()
 def triangles(path: Path):
-    typer.echo(f"Analyzing triangles at {path}")
+    typer.echo(f"Analyzing triangles at {path}\n")
     df = pl.read_csv(path)
+    model_name = df["model_name"].unique().item().split("/")[-1]
     
     df = (
         df.with_columns(
@@ -25,10 +26,13 @@ def triangles(path: Path):
         ).drop("result")
     )
 
-    print(df.select("answer", "valid", "error"))
+    error_frequency = df["error"].value_counts().sort("count", descending=True).to_dicts()
+    error_section = "Error Frequency".center(80,'-') + "\n" + "\n".join(f"{e['error']}: {e['count']}" for e in error_frequency)
+    typer.echo(f"|| {model_name} ||".center(80,'='))
+    typer.echo(error_section)
+
     score = df['valid'].sum() / len(df)
-    print(f"Score: {score}")
-    
+    typer.echo("Score".center(80,'-') + f"\n{score:.2f}")
 
 if __name__ == "__main__":
     app()
