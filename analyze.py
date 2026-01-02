@@ -34,5 +34,33 @@ def triangles(path: Path):
     score = df['valid'].sum() / len(df)
     typer.echo("Score".center(80,'-') + f"\n{score:.2f}")
 
+@app.command()
+def to_txt(path: Path, outfile: Path, n_tail: int | None = None):
+    typer.echo(f"Reading model run data from {path}")
+    df = pl.read_csv(path)
+    line_length = 80
+    delim = "-"*line_length 
+
+    df = (
+        df.select("prompt", "outer_gen_text")
+        .with_columns(
+            gen_last_section=pl.col("outer_gen_text").str.slice(-n_tail) if n_tail else pl.col("outer_gen_text")
+        )
+        .group_by("prompt")
+        .agg("gen_last_section")
+    )
+    
+    texts = []
+    for row in df.iter_rows(named=True):
+        prompt = delim + f"\n{row["prompt"]}\n" + delim + "\n\n"
+        solution_str = '\n'.join(
+            f"\n SOLUTION {idx}" + "/"*line_length + "\n\n .... "+ gen_text_ending for idx, gen_text_ending in enumerate(row["gen_last_section"])
+        )
+        texts.append(prompt + solution_str)
+
+
+    outfile.write_text('\n'.join(texts), encoding="utf-8")
+    typer.echo(f"Exported to {outfile}")
+
 if __name__ == "__main__":
     app()
