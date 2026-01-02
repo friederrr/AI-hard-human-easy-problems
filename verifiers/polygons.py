@@ -1,59 +1,69 @@
-
-from dataclasses import dataclass
 import re
-from sympy.geometry.point import Point
-from sympy import Point, Polygon
-from sympy.geometry.polygon import Triangle
-from sympy.multipledispatch.utils import reverse_dict
+from sympy import Point
+from dataclasses import dataclass
+from typing import Callable, Iterable
 from sympy.utilities.iterables import rotate_left
 
-def extract_boxed(text: str) -> str:
-    """
-    Extract the text from the last \\boxed{...} in the text.
-    Uses regex to find the position, then extracts the content handling nested braces.
-    """
-    matches = list(re.finditer(r'\\boxed\{', text))
-    if not matches:
-        return ""
-    
-    last_match = matches[-1]
-    start_pos = last_match.end()
-    
-    # Count braces to find the matching closing brace
-    brace_count = 1
-    pos = start_pos
-    while pos < len(text) and brace_count > 0:
-        if text[pos] == '{':
-            brace_count += 1
-        elif text[pos] == '}':
-            brace_count -= 1
-        pos += 1
-    
-    if brace_count != 0:
-        return ""
-    
-    return text[start_pos:pos-1]
 
-def extract_last_enclosed_answer(text: str) -> str:
+def verify_polygon_problem(input: str, problem_version: int) -> tuple[bool, str]:
     """
-    Extract the last text enclosed in <answer>...</answer> tags.
-    Ignores incomplete or unmatched opening <answer> tags.
+
+    Verifies an answer for a problem in the class of polygon problems.
+    Expected input format:
+    1. (0,0), (1,0), (0,1); (1,2); (2,1)
+    2. (0,0), (1,0), (0,1); (1,2); (2,1); (0,2)
+    ...
+
+    Returns:
+        tuple[bool, str]: bool is True if the answer is valid, False otherwise.
+        str is an error message if the answer is invalid, empty string if the answer is valid.
     """
-    # Find all closing </answer> tags
-    closing_tags = list(re.finditer(r'</answer>', text))
-    if not closing_tags:
-        return ""
     
-    # find the last opening tag before the last closing tag
-    last_closing = closing_tags[-1]
-    closing_pos = last_closing.start()
-    opening_tags = list(re.finditer(r'<answer>', text[:closing_pos]))
-    if not opening_tags:
-        return ""
+    if problem_version == 1:
+            return verify_p1(input)
+
+    if problem_version not in [2,3,4]:
+        return False, f"Unknown problem version: {problem_version}"
+
+    lines = input.strip().split('\n')   
+    accepted_n = [1,2,3]
     
-    # Use the last opening tag before the closing tag
-    last_opening = opening_tags[-1]
-    return text[last_opening.end():last_closing.start()]
+    for line in lines:
+        n = int(line.split(' ')[0].strip())
+        if n not in accepted_n:
+            return False, f"Wrong line enumeration: {n} not in {accepted_n}"
+        
+        P, *T  = [get_points(p.strip()) for p in line.split(';') if p != ""]
+
+        if len(T) != n * 3:
+            return False, f"Wrong number of triangles for line {n}"
+
+        try:
+            if not all(area(*t) > 0 for t in T):
+                return False, f"Degenerate triangle in line {n}"
+        except (ValueError, TypeError):
+            return False, f"Invalid triangle definition in line {n}"
+
+        try:
+            C = concavities(P)
+        except (ValueError, TypeError):
+            return False, f"Count not check pentagon P for concavities in line {n}"
+
+        inputs = (P,T,C)
+        match problem_version:
+            case 2:
+                return check_pi(*inputs, [2], correct_answer_p2)
+            case 3:
+                return check_pi(*inputs, [0, 4], correct_answer_p3)
+            case 4:
+                return check_pi(*inputs, [1, 3], correct_answer_p4)
+
+    # At this point, the answer is correct.
+
+    if len(lines) > 3:
+        return True, "Correct answer, and OMG it found a correct example with more than 3 maximal triangles…"
+    
+    return True, ''
 
 def verify_p1(input: str) -> tuple[bool, str]:
     """ Verifies an answer for the triangles problem.
@@ -297,79 +307,13 @@ def maxima(A: list[float], threshold: float = 0.999) -> list[int]:
     m = max(A)
     return [i for i, a in enumerate(A) if a > threshold * m]
 
-def verify_polgygon_problem(input: str, problem_version: int) -> tuple[bool, str]:
-    """
+def check_pi(P: list[Point], T: list[list[Point]], C: list[int], expected_vertices: Iterable[int], check_fn: Callable[[list[Point]], list[list[Point]]], k: int = 5) -> tuple[bool, str]:
 
-    Verifies an answer for a problem in the class of polygon problems.
-    Expected input format:
-    1. (0,0), (1,0), (0,1); (1,2); (2,1)
-    2. (0,0), (1,0), (0,1); (1,2); (2,1); (0,2)
-    ...
-
-    Returns:
-        tuple[bool, str]: bool is True if the answer is valid, False otherwise.
-        str is an error message if the answer is invalid, empty string if the answer is valid.
-    """
-    
-    if problem_version == 1:
-            return verify_p1(input)
-
-    if not problem_version in [2,3,4]:
-        return False, f"Unknown problem version: {problem_version}"
-
-    lines = input.strip().split('\n')   
-    accepted_n = [1,2,3]
-    
-    for l in lines:
-        n = int(l.split(' ')[0].strip())
-        if n not in accepted_n:
-            return False, f"Wrong line enumeration: {n} not in {accepted_n}"
-        
-        P, *T  = [get_points(p.strip()) for p in l.split(';') if p != ""]
-
-        if len(T) != n * 3:
-            return False, f"Wrong number of triangles for line {n}"
-
-        try:
-            if not all(area(*t) > 0 for t in T):
-                return False, f"Degenerate triangle in line {n}"
-        except (ValueError, TypeError):
-            return False, f"Invalid triangle definition in line {n}"
-
-        try:
-            C = concavities(P)
-        except (ValueError, TypeError):
-            return False, f"Count not check pentagon P for concavities in line {n}"
-
-        match problem_version:
-            case 2:
-                return check_p2(P, T, C)
-            case 3:
-                pass
-            case 4:
-                pass
-    
-    return True, ''
-
-def check_p2(P: list[Point], T: list[list[Point]], C: list[int]) -> tuple[bool, str]:
-    ks= list(range(0, 5))
-    expected_set = set([2])
-
-    valid_k = None
-    for k in ks:
-        C_k = set(c + k % 5 for c in C)
-        if C_k == expected_set:
-            valid_k = k
-            break
-
+    valid_k = check_concave_vertices(C, range(0, k), expected_vertices)
     if not valid_k:
         return False, f"Pentagon {P} has concave vertices {C}"
-
-    # rotate P cyclically by valid_k
     P_rot = rotate_left(P, valid_k)
-
-    # check that T == correct_answer_P2111(P_rot)
-    correct_triangles = correct_answer_p2(P_rot)
+    correct_triangles = _get_max_area_triangles(check_fn(P_rot))
     corrected_triangles_set = set(frozenset(t) for t in correct_triangles)
     predicted_triangles_set = set(frozenset(t) for t in T)
 
@@ -377,6 +321,19 @@ def check_p2(P: list[Point], T: list[list[Point]], C: list[int]) -> tuple[bool, 
         return False, f"Wrong triangles: {predicted_triangles_set} != {corrected_triangles_set}"
 
     return True, ""
+
+def check_concave_vertices(concavities: list[int], ks: Iterable[int], expected_vertices: Iterable[int]) -> int | None:
+    ks = list(ks)
+    expected_vertices = set(expected_vertices)
+    valid_k = None
+    for k in ks:
+        C_k = set(c + k % 5 for c in concavities)
+        if C_k == expected_vertices:
+            valid_k = k
+            break
+
+    return valid_k
+
 
 def correct_answer_p2(P: list[Point]) -> list[list[Point]]:
     Q = list(reversed(P))
@@ -392,8 +349,7 @@ def correct_answer_p2(P: list[Point]) -> list[list[Point]]:
     T.extend(_get_triangles_p2(P, p))
     T.extend(_get_triangles_p2(Q, q))
 
-    return _get_max_area_triangles(T)
-
+    return T
 
 def _get_triangles_p2(P: list[Point], p: float) -> list[list[Point]]:
     T = []
@@ -412,3 +368,30 @@ def _get_max_area_triangles(T: list[list[Point]]) -> list[list[Point]]:
     areas = [area(*t) for t in T]
     max_area = max(areas)
     return [t for t, a in zip(T, areas) if a == max_area]
+
+def correct_answer_p3(P: list[Point]) -> list[list[Point]]:
+    T = []
+
+    T.append([P[2], intersection(P[0], P[4], P[2], P[3]).p, intersection(P[0], P[4], P[2], P[1]).p])
+    T.append([P[2], P[3], intersection(P[3], P[4], P[1], P[2]).p])
+
+    P_rev = list(reversed(P))
+    T.append([P_rev[2], P_rev[3], intersection(P_rev[3], P_rev[4], P_rev[1], P_rev[2]).p])
+
+    return T
+
+def correct_answer_p4(P: list[Point]) -> list[list[Point]]:
+    P_rev = list(reversed(P))
+    T = []
+
+    T.append([P[2], intersection(P[0], P[4], P[2], P[3]).p, intersection(P[0], P[4], P[2], P[1]).p])
+    
+    isec = intersection(P[0], P[3], P[4], P[1])
+    if isec.first < 1 and isec.second < 1:
+        T.append([P[4], P[0], intersection(P[0], P[1], P[4], P[3]).p])
+    
+    if isec.first < 1:
+        T.append([P[4], intersection(P[4], P[0], P[1], P[2]).p, intersection(P[4], P[3], P[1], P[2]).p])
+        T.append([P_rev[4], intersection(P_rev[4], P_rev[0], P_rev[1], P_rev[2]).p, intersection(P_rev[4], P_rev[3], P_rev[1], P_rev[2]).p])
+        
+    return T

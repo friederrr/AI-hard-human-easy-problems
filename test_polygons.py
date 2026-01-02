@@ -1,4 +1,4 @@
-from answer_parsers import verify_p1
+from verifiers.polygons import verify_polygon_problem
 import pytest
 
 
@@ -13,8 +13,8 @@ import pytest
     4; (0,0), (6,0), (7,5), (5,7), (6,0); (0,0), (6,0), (5,7); (0,0), (7,5), (6,0);  
     """,
 ])
-def test_points_incorrect_lines(input: str):
-    assert verify_p1(input)[0] is False
+def test_p1_points_incorrect_lines(input: str):
+    assert verify_polygon_problem(input, 1)[0] is False
 
 @pytest.mark.parametrize("input", [
     """
@@ -34,8 +34,8 @@ def test_points_incorrect_lines(input: str):
     2; (0,0), (6,0), (7,5), (5,7), (6,0); (0,0), (6,0), (5,7); (0,0), (7,5), (6,0);  
     """,
 ])
-def test_points_non_convex_A(input: str):
-    assert verify_p1(input)[0] is False
+def test_p1_points_non_convex_A(input: str):
+    assert verify_polygon_problem(input, 1)[0] is False
 
 @pytest.mark.parametrize("input", [
     """
@@ -47,8 +47,8 @@ def test_points_non_convex_A(input: str):
     2; (0,0), (6,0), (7,5), (5,7), (6,0); (0,0), (0,1), (0,2); (0,0), (7,5), (6,0); 
     """
 ])
-def test_points_B_non_triangle(input: str):
-    assert verify_p1(input)[0] is False
+def test_p1_points_B_non_triangle(input: str):
+    assert verify_polygon_problem(input, 1)[0] is False
 
 @pytest.mark.parametrize("input", [
     """
@@ -56,8 +56,8 @@ def test_points_B_non_triangle(input: str):
     2; (0,0), (6,0). (7,5), (5,7), (6,0); (0,0), (6,0), (5,7); 
     """,
 ])
-def test_points_missing_C(input: str):
-    assert verify_p1(input)[0] is False
+def test_p1_points_missing_C(input: str):
+    assert verify_polygon_problem(input, 1)[0] is False
 
 @pytest.mark.parametrize("input", [
     """
@@ -69,8 +69,8 @@ def test_points_missing_C(input: str):
     2; (0,0), (6,0), (5,2), (2,5), (0,6); (0,0), (6,0), (0,6); (0,5), (0,0), (10, 0);
     """,
 ])
-def test_points_invalid_lines(input: str):
-    assert verify_p1(input)[0] is False
+def test_p1_points_invalid_lines(input: str):
+    assert verify_polygon_problem(input, 1)[0] is False
 
 @pytest.mark.parametrize("input", [
     """
@@ -90,8 +90,8 @@ def test_points_invalid_lines(input: str):
     2; (0,0), (0,6). (5,7), (7,5), (6,0); (0,0), (6,0), (5,7); (0,0), (7,5), (0,6);  
     """
 ])
-def test_points_correct(input: str):
-    assert verify_p1(input)[0] is True
+def test_p1_points_correct(input: str):
+    assert verify_polygon_problem(input, 1)[0] is True
 
 @pytest.mark.parametrize("input", [
     """
@@ -115,5 +115,5 @@ def test_points_correct(input: str):
     2; (0,0), (6,0). (7,5), (5,7), (0,6); (0,0), (6,0), (5,7); (0,0), (7,5), (0,6); 
     """
 ])
-def test_incorrect(input: str):
-    assert verify_p1(input)[0] is False
+def test_p1_incorrect(input: str):
+    assert verify_polygon_problem(input, 1)[0] is False

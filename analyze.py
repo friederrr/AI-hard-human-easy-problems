@@ -2,13 +2,14 @@ from pathlib import Path
 import polars as pl
 import typer
 
-from answer_parsers import extract_last_enclosed_answer, verify_p1
+from utils import extract_last_enclosed_answer
+from polygons import verify_polygon_problem
 
 app = typer.Typer()
 
 @app.command()
-def triangles(path: Path):
-    typer.echo(f"Analyzing triangles at {path}\n")
+def polygons(path: Path, problem_version: int):
+    typer.echo(f"Analyzing polygons at {path}\n")
     df = pl.read_csv(path)
     model_name = df["model_name"].unique().item().split("/")[-1]
     
@@ -17,7 +18,7 @@ def triangles(path: Path):
             answer=pl.col("outer_gen_text").map_elements(extract_last_enclosed_answer, return_dtype=pl.Utf8),
         ).with_columns(
             result=pl.col("answer").map_elements(
-                lambda x: {"valid": (r := verify_p1(x))[0], "error": r[1]},
+                lambda x: {"valid": (r := verify_polygon_problem(x, problem_version))[0], "error": r[1]},
                 return_dtype=pl.Struct([pl.Field("valid", pl.Boolean), pl.Field("error", pl.Utf8)])
             )
         ).with_columns(
