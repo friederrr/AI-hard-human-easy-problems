@@ -1,7 +1,10 @@
 
+from dataclasses import dataclass
 import re
+from sympy.geometry.point import Point
 from sympy import Point, Polygon
 from sympy.geometry.polygon import Triangle
+from sympy.multipledispatch.utils import reverse_dict
 from sympy.utilities.iterables import rotate_left
 
 def extract_boxed(text: str) -> str:
@@ -52,7 +55,7 @@ def extract_last_enclosed_answer(text: str) -> str:
     last_opening = opening_tags[-1]
     return text[last_opening.end():last_closing.start()]
 
-def verify_triangles(input: str) -> tuple[bool, str]:
+def verify_p1(input: str) -> tuple[bool, str]:
     """ Verifies an answer for the triangles problem.
     Returns:
         tuple[bool, str]: bool is True if the answer is valid, False otherwise.
@@ -264,11 +267,148 @@ def segments_intersect(A: Point, B: Point, C: Point, D: Point) -> bool:
     """check that AB intersects CD (possibly by the end points)"""
     return (det(A - C, A - D) * det(B - C, B - D) <= 0) and (det(C - A, C - B) * det(D - A, D - B) <= 0)
 
+def area(P: Point, Q: Point, R: Point) -> float:
+    return abs(det(Q-P, R-P)) / 2
 
-if __name__ == "__main__":
-    input_text = """1; (0,0), (6,0), (5,2), (2,5), (0,6); (0,0), (6,0), (0,6);
-    2; (0,0), (6,0), (7,5), (5,7), (6,0); (0,0), (6,0), (5,7); (0,0), (7,5), (6,0);  
+@dataclass
+class IntersectionResult:
+    p: Point
+    first: float
+    second: float
+
+def intersection(A: Point, B: Point, C: Point, D: Point) -> IntersectionResult:
+
+    ba = B - A
+    dc = D - C
+    ca = C - A
+
+    # Apply Cramer's rule to solve for t and s
+    q = det(ba, -dc)
+
+    if q == 0: # Lines are parallel
+        raise ValueError("Lines are parallel")
+    
+    t = det(ca, -dc) / q
+    s = det(ba, ca) / q
+
+    return IntersectionResult(A + ba * t, t, s)
+
+def maxima(A: list[float], threshold: float = 0.999) -> list[int]:
+    m = max(A)
+    return [i for i, a in enumerate(A) if a > threshold * m]
+
+def verify_polgygon_problem(input: str, problem_version: int) -> tuple[bool, str]:
     """
 
-    verified = verify_triangles(input_text)
-    print(verified)
+    Verifies an answer for a problem in the class of polygon problems.
+    Expected input format:
+    1. (0,0), (1,0), (0,1); (1,2); (2,1)
+    2. (0,0), (1,0), (0,1); (1,2); (2,1); (0,2)
+    ...
+
+    Returns:
+        tuple[bool, str]: bool is True if the answer is valid, False otherwise.
+        str is an error message if the answer is invalid, empty string if the answer is valid.
+    """
+    
+    if problem_version == 1:
+            return verify_p1(input)
+
+    if not problem_version in [2,3,4]:
+        return False, f"Unknown problem version: {problem_version}"
+
+    lines = input.strip().split('\n')   
+    accepted_n = [1,2,3]
+    
+    for l in lines:
+        n = int(l.split(' ')[0].strip())
+        if n not in accepted_n:
+            return False, f"Wrong line enumeration: {n} not in {accepted_n}"
+        
+        P, *T  = [get_points(p.strip()) for p in l.split(';') if p != ""]
+
+        if len(T) != n * 3:
+            return False, f"Wrong number of triangles for line {n}"
+
+        try:
+            if not all(area(*t) > 0 for t in T):
+                return False, f"Degenerate triangle in line {n}"
+        except (ValueError, TypeError):
+            return False, f"Invalid triangle definition in line {n}"
+
+        try:
+            C = concavities(P)
+        except (ValueError, TypeError):
+            return False, f"Count not check pentagon P for concavities in line {n}"
+
+        match problem_version:
+            case 2:
+                return check_p2(P, T, C)
+            case 3:
+                pass
+            case 4:
+                pass
+    
+    return True, ''
+
+def check_p2(P: list[Point], T: list[list[Point]], C: list[int]) -> tuple[bool, str]:
+    ks= list(range(0, 5))
+    expected_set = set([2])
+
+    valid_k = None
+    for k in ks:
+        C_k = set(c + k % 5 for c in C)
+        if C_k == expected_set:
+            valid_k = k
+            break
+
+    if not valid_k:
+        return False, f"Pentagon {P} has concave vertices {C}"
+
+    # rotate P cyclically by valid_k
+    P_rot = rotate_left(P, valid_k)
+
+    # check that T == correct_answer_P2111(P_rot)
+    correct_triangles = correct_answer_p2(P_rot)
+    corrected_triangles_set = set(frozenset(t) for t in correct_triangles)
+    predicted_triangles_set = set(frozenset(t) for t in T)
+
+    if corrected_triangles_set != predicted_triangles_set:
+        return False, f"Wrong triangles: {predicted_triangles_set} != {corrected_triangles_set}"
+
+    return True, ""
+
+def correct_answer_p2(P: list[Point]) -> list[list[Point]]:
+    Q = list(reversed(P))
+    T = []
+
+    p = intersection(P[0], P[2], P[4], P[1]).first
+    q = intersection(Q[0], Q[2], Q[4], Q[1]).first
+    
+    if abs(det(P[1] - P[0], P[4] - P[3])) < 0.001 and (p < 1 or q < 1):
+        # one of these quadrangles is strictly concave ⇔ infinitely many maxinmal triangles
+        raise ValueError("Infinitely many maximal triangles")
+
+    T.extend(_get_triangles_p2(P, p))
+    T.extend(_get_triangles_p2(Q, q))
+
+    return _get_max_area_triangles(T)
+
+
+def _get_triangles_p2(P: list[Point], p: float) -> list[list[Point]]:
+    T = []
+    if p < 0.999:
+        T.append([P[0], P[1], P[4]])
+        T.append([P[0], P[1], intersection(P[1], P[2], P[3], P[4]).p])
+    elif p > 1.001:
+        T.append([P[0], P[1], intersection(P[1], P[2], P[4], P[0]).p])
+        T.append([P[4], P[0], intersection(P[0], P[1], P[4], P[2]).p])
+    else:
+        T.append([P[0], P[1], P[4]])
+    return T
+
+
+def _get_max_area_triangles(T: list[list[Point]]) -> list[list[Point]]:
+    areas = [area(*t) for t in T]
+    max_area = max(areas)
+    return [t for t, a in zip(T, areas) if a == max_area]

@@ -1,4 +1,4 @@
-from answer_parsers import verify_triangles
+from answer_parsers import verify_p1
 import pytest
 
 
@@ -14,7 +14,7 @@ import pytest
     """,
 ])
 def test_points_incorrect_lines(input: str):
-    assert verify_triangles(input)[0] is False
+    assert verify_p1(input)[0] is False
 
 @pytest.mark.parametrize("input", [
     """
@@ -35,7 +35,7 @@ def test_points_incorrect_lines(input: str):
     """,
 ])
 def test_points_non_convex_A(input: str):
-    assert verify_triangles(input)[0] is False
+    assert verify_p1(input)[0] is False
 
 @pytest.mark.parametrize("input", [
     """
@@ -48,7 +48,7 @@ def test_points_non_convex_A(input: str):
     """
 ])
 def test_points_B_non_triangle(input: str):
-    assert verify_triangles(input)[0] is False
+    assert verify_p1(input)[0] is False
 
 @pytest.mark.parametrize("input", [
     """
@@ -57,7 +57,7 @@ def test_points_B_non_triangle(input: str):
     """,
 ])
 def test_points_missing_C(input: str):
-    assert verify_triangles(input)[0] is False
+    assert verify_p1(input)[0] is False
 
 @pytest.mark.parametrize("input", [
     """
@@ -70,7 +70,7 @@ def test_points_missing_C(input: str):
     """,
 ])
 def test_points_invalid_lines(input: str):
-    assert verify_triangles(input)[0] is False
+    assert verify_p1(input)[0] is False
 
 @pytest.mark.parametrize("input", [
     """
@@ -91,7 +91,7 @@ def test_points_invalid_lines(input: str):
     """
 ])
 def test_points_correct(input: str):
-    assert verify_triangles(input)[0] is True
+    assert verify_p1(input)[0] is True
 
 @pytest.mark.parametrize("input", [
     """
@@ -116,4 +116,4 @@ def test_points_correct(input: str):
     """
 ])
 def test_incorrect(input: str):
-    assert verify_triangles(input)[0] is False
+    assert verify_p1(input)[0] is False
